@@ -8,14 +8,13 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import PyPDFLoader
 from langchain.chains.question_answering import load_qa_chain
-from langchain.chains.question.generation import QuestionGeneratorChain
 
 # Initialize the Flask app
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 
 # Set up OpenAI API key
-openai.api_key = 'sk-68Y7HODIib0kJGpK5v9RIj2gLpasocp-VibzRNdUn-T3BlbkFJFbcqLR55JpgX6H1RSL2Osvl1DqppuKVLSUAm7IJSMA'
+openai.api_key = 'sk-68Y7HODIib0kJGpK5v9RIj2gLpasocp-VibzRNdUn-T3BlbkFJFbcqLR55JpgX6H1RSL2Osvl1DqppuKVLSUAm7IJSMA'  # Replace with your actual API key
 
 # Function to create LangChain pipeline
 def create_chain(pdf_path):
@@ -34,17 +33,14 @@ def create_chain(pdf_path):
     # Set up the LLM
     llm = ChatOpenAI(model="gpt-4")
 
-    # Load the question generation chain
-    question_generator = QuestionGeneratorChain.from_llm(llm)
-
     # Load the QA chain
     qa_chain = load_qa_chain(llm, chain_type="stuff")
-    
+
     # Create the ConversationalRetrievalChain
     chain = ConversationalRetrievalChain(
         retriever=vector_store.as_retriever(),
-        combine_docs_chain=qa_chain,
-        question_generator=question_generator
+        combine_docs_chain=qa_chain
+        # No question_generator is provided if it isn't necessary
     )
     
     return chain
