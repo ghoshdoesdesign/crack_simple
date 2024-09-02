@@ -1,0 +1,3 @@
+Flask
+Flask-SQLAlchemy
+PyMuPDF  # Optional, if you want to do more with PDFs
