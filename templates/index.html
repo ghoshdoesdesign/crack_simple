@@ -1,49 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Uploader</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        form {
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        h1 {
-            margin-top: 0;
-        }
-        input[type="file"] {
-            margin-bottom: 10px;
-        }
-        input[type="submit"] {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        input[type="submit"]:hover {
-            background-color: #45a049;
-        }
-    </style>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>PDF Uploader</title>
+   <style>
+       body {
+           font-family: Arial, sans-serif;
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           height: 100vh;
+           margin: 0;
+           background-color: #f0f0f0;
+       }
+       form {
+           background-color: white;
+           padding: 20px;
+           border-radius: 8px;
+           box-shadow: 0 0 10px rgba(0,0,0,0.1);
+       }
+       h1 {
+           margin-top: 0;
+       }
+       input[type="file"] {
+           margin-bottom: 10px;
+       }
+       input[type="submit"] {
+           background-color: #4CAF50;
+           color: white;
+           padding: 10px 15px;
+           border: none;
+           border-radius: 4px;
+           cursor: pointer;
+       }
+       input[type="submit"]:hover {
+           background-color: #45a049;
+       }
+   </style>
 </head>
 <body>
-    <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
-        <h1>Upload a PDF</h1>
-        <input type="file" name="file" accept=".pdf" required>
-        <input type="submit" value="Upload">
-    </form>
+   <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
+       <h1>Upload a PDF</h1>
+       <input type="file" name="file" accept=".pdf" required>
+       <input type="submit" value="Upload">
+   </form>
 </body>
 </html>

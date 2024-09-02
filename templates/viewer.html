@@ -1,582 +1,357 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Viewer with Highlighting, Comments, and Undo</title>
-    <script src="{{ url_for('static', filename='pdfjs/pdf.mjs') }}" type="module"></script>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-        }
-        #pdf-viewer {
-            max-width: 800px;
-            width: 100%;
-            margin: 20px auto;
-        }
-        .page-container {
-            position: relative;
-            margin-bottom: 20px;
-        }
-        .page {
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-        }
-        .highlight-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-        }
-        .highlight-area {
-            position: absolute;
-            background-color: rgba(255, 255, 0, 0.3);
-            pointer-events: auto;
-            cursor: pointer;
-        }
-        .comment-popup {
-            position: absolute;
-            background-color: white;
-            border: 1px solid #ccc;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-        .comment-input {
-            width: 200px;
-            height: 100px;
-            margin-bottom: 10px;
-        }
-        .save-button, .close-button {
-            margin-right: 5px;
-        }
-        .comment-display {
-            position: absolute;
-            background-color: white;
-            border: 1px solid #ccc;
-            padding: 5px;
-            border-radius: 3px;
-            font-size: 12px;
-            max-width: 150px;
-            word-wrap: break-word;
-            z-index: 999;
-            pointer-events: none;
-        }
-    </style>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>PDF Viewer with Highlighting, Comments, and Chatbot</title>
+   <script src="{{ url_for('static', filename='pdfjs/pdf.mjs') }}" type="module"></script>
+   <style>
+       body {
+           display: flex;
+           justify-content: flex-start; /* Align content to the left */
+           margin: 0;
+           padding: 0;
+           font-family: Arial, sans-serif;
+       }
+       #pdf-viewer {
+           max-width: 800px;
+           width: 100%;
+           margin: 20px 20px 20px 0; /* Adjust the margin as needed; 20px on the left, 0 on the right */
+       }
+       .page-container {
+           position: relative;
+           margin-bottom: 20px;
+       }
+       .page {
+           box-shadow: 0 0 10px rgba(0,0,0,0.3);
+       }
+       .highlight-layer {
+           position: absolute;
+           top: 0;
+           left: 0;
+           pointer-events: none;
+       }
+       .highlight-area {
+           position: absolute;
+           background-color: rgba(255, 255, 0, 0.3);
+           pointer-events: auto;
+           cursor: pointer;
+       }
+       .comment-popup {
+           position: absolute;
+           background-color: white;
+           border: 1px solid #ccc;
+           padding: 10px;
+           border-radius: 5px;
+           box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+           z-index: 1000;
+       }
+       .comment-input {
+           width: 200px;
+           height: 100px;
+           margin-bottom: 10px;
+       }
+       .save-button, .close-button {
+           margin-right: 5px;
+       }
+       .comment-display {
+           position: absolute;
+           background-color: white;
+           border: 1px solid #ccc;
+           padding: 5px;
+           border-radius: 3px;
+           font-size: 12px;
+           max-width: 150px;
+           word-wrap: break-word;
+           z-index: 999;
+           pointer-events: none;
+       }
+       #chat-box {
+           position: fixed;
+           bottom: 20px;
+           right: 20px;
+           width: 300px;
+           height: 400px;
+           border: 1px solid #ccc;
+           border-radius: 5px;
+           background-color: white;
+           box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+       }
+       #chat-content {
+           height: 350px;
+           overflow-y: auto;
+           padding: 10px;
+       }
+       #chat-input {
+           width: calc(100% - 20px);
+           padding: 5px;
+           margin: 5px;
+       }
+   </style>
 </head>
 <body>
-    <div id="pdf-viewer"></div>
-    <div id="error-message" style="color: red; text-align: center;"></div>
-    <script type="module">
-        import * as pdfjsLib from "{{ url_for('static', filename='pdfjs/pdf.mjs') }}";
+   <div id="pdf-viewer"></div>
+   <div id="chat-box">
+       <div id="chat-content">
+           <!-- Chat messages will go here -->
+       </div>
+       <input type="text" id="chat-input" placeholder="Ask something...">
+   </div>
+   <div id="error-message" style="color: red; text-align: center;"></div>
+   <script type="module">
+       import * as pdfjsLib from "{{ url_for('static', filename='pdfjs/pdf.mjs') }}";
 
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ url_for('static', filename='pdfjs/pdf.worker.mjs') }}";
+       pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ url_for('static', filename='pdfjs/pdf.worker.mjs') }}";
 
-        const url = "{{ url_for('uploaded_file', filename=filename) }}";
-        const loadingTask = pdfjsLib.getDocument(url);
-        const scale = 1.5;
-        let pdfDocument = null;
-        let allHighlights = {};
+       const url = "{{ url_for('uploaded_file', filename=filename) }}";
+       const loadingTask = pdfjsLib.getDocument(url);
+       const scale = 1.5;
+       let pdfDocument = null;
+       let allHighlights = {};
 
-        loadingTask.promise.then(function(pdf) {
-            pdfDocument = pdf;
-            const viewer = document.getElementById('pdf-viewer');
+       loadingTask.promise.then(function(pdf) {
+           pdfDocument = pdf;
+           const viewer = document.getElementById('pdf-viewer');
 
-            function renderPage(pageNumber) {
-                pdf.getPage(pageNumber).then(function(page) {
-                    const viewport = page.getViewport({scale: scale});
+           function renderPage(pageNumber) {
+               pdf.getPage(pageNumber).then(function(page) {
+                   const viewport = page.getViewport({scale: scale});
 
-                    const pageContainer = document.createElement('div');
-                    pageContainer.className = 'page-container';
-                    pageContainer.style.position = 'relative';
-                    pageContainer.style.width = `${viewport.width}px`;
-                    pageContainer.style.height = `${viewport.height}px`;
+                   const pageContainer = document.createElement('div');
+                   pageContainer.className = 'page-container';
+                   pageContainer.style.position = 'relative';
+                   pageContainer.style.width = `${viewport.width}px`;
+                   pageContainer.style.height = `${viewport.height}px`;
 
-                    const canvas = document.createElement('canvas');
-                    canvas.className = 'page';
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
+                   const canvas = document.createElement('canvas');
+                   canvas.className = 'page';
+                   const context = canvas.getContext('2d');
+                   canvas.height = viewport.height;
+                   canvas.width = viewport.width;
 
-                    const renderContext = {
-                        canvasContext: context,
-                        viewport: viewport
-                    };
+                   const renderContext = {
+                       canvasContext: context,
+                       viewport: viewport
+                   };
 
-                    const highlightLayer = document.createElement('div');
-                    highlightLayer.className = 'highlight-layer';
-                    highlightLayer.style.width = `${viewport.width}px`;
-                    highlightLayer.style.height = `${viewport.height}px`;
+                   const highlightLayer = document.createElement('div');
+                   highlightLayer.className = 'highlight-layer';
+                   highlightLayer.style.width = `${viewport.width}px`;
+                   highlightLayer.style.height = `${viewport.height}px`;
 
-                    pageContainer.appendChild(canvas);
-                    pageContainer.appendChild(highlightLayer);
-                    viewer.appendChild(pageContainer);
+                   pageContainer.appendChild(canvas);
+                   pageContainer.appendChild(highlightLayer);
+                   viewer.appendChild(pageContainer);
 
-                    page.render(renderContext);
+                   page.render(renderContext);
 
-                    setupHighlighting(pageContainer, highlightLayer, page, viewport, pageNumber);
-                    console.log(`Page ${pageNumber} rendered and highlighting setup`);
+                   setupHighlighting(pageContainer, highlightLayer, page, viewport, pageNumber);
+                   console.log(`Page ${pageNumber} rendered and highlighting setup`);
 
-                    if (pageNumber < pdf.numPages) {
-                        renderPage(pageNumber + 1);
-                    } else {
-                        console.log('All pages rendered');
-                    }
-                });
-            }
+                   if (pageNumber < pdf.numPages) {
+                       renderPage(pageNumber + 1);
+                   } else {
+                       console.log('All pages rendered');
+                   }
+               });
+           }
 
-            renderPage(1);
-        }).catch(function(error) {
-            console.error("Error loading PDF:", error);
-            document.getElementById('error-message').textContent = "Error loading PDF: " + error.message;
-        });
+           renderPage(1);
+       }).catch(function(error) {
+           console.error("Error loading PDF:", error);
+           document.getElementById('error-message').textContent = "Error loading PDF: " + error.message;
+       });
 
-        function setupHighlighting(pageContainer, highlightLayer, page, viewport, pageNumber) {
-            let isHighlighting = false;
-            let startX, startY;
-            allHighlights[pageNumber] = allHighlights[pageNumber] || [];
+       function setupHighlighting(pageContainer, highlightLayer, page, viewport, pageNumber) {
+           let isHighlighting = false;
+           let startX, startY;
+           allHighlights[pageNumber] = allHighlights[pageNumber] || [];
 
-            pageContainer.addEventListener('mousedown', startHighlighting);
-            pageContainer.addEventListener('mousemove', drawHighlight);
-            pageContainer.addEventListener('mouseup', endHighlighting);
+           pageContainer.addEventListener('mousedown', startHighlighting);
+           pageContainer.addEventListener('mousemove', drawHighlight);
+           pageContainer.addEventListener('mouseup', endHighlighting);
 
-            console.log(`Highlighting events set up for page ${pageNumber}`);
+           console.log(`Highlighting events set up for page ${pageNumber}`);
 
-            function startHighlighting(e) {
-                console.log('Start highlighting', e.target);
-                if (e.target.classList.contains('highlight-area')) return;
-                isHighlighting = true;
-                [startX, startY] = getCoordinates(e);
-                console.log('Highlighting started at', startX, startY);
-            }
+           function startHighlighting(e) {
+               console.log('Start highlighting', e.target);
+               if (e.target.classList.contains('highlight-area')) return;
+               isHighlighting = true;
+               [startX, startY] = getCoordinates(e);
+               console.log('Highlighting started at', startX, startY);
+           }
 
-            function drawHighlight(e) {
-                if (!isHighlighting) return;
-                const [endX, endY] = getCoordinates(e);
-                updateTempHighlight(startX, startY, endX, endY);
-            }
+           function drawHighlight(e) {
+               if (!isHighlighting) return;
+               const [endX, endY] = getCoordinates(e);
+               updateTempHighlight(startX, startY, endX, endY);
+           }
 
-            function endHighlighting(e) {
-                if (!isHighlighting) return;
-                console.log('End highlighting');
-                isHighlighting = false;
-                const [endX, endY] = getCoordinates(e);
+           function endHighlighting(e) {
+               if (!isHighlighting) return;
+               console.log('End highlighting');
+               isHighlighting = false;
+               const [endX, endY] = getCoordinates(e);
 
-                const highlight = {startX, startY, endX, endY, comment: ''};
-                allHighlights[pageNumber].push(highlight);
-                drawAllHighlights(highlightLayer, pageNumber);
-                showCommentPopup(e, highlight, pageNumber, allHighlights[pageNumber].length - 1);
-                console.log('New highlight created:', highlight);
-            }
+               const highlight = {startX, startY, endX, endY, comment: ''};
+               allHighlights[pageNumber].push(highlight);
+               drawAllHighlights(highlightLayer, pageNumber);
+               showCommentPopup(e, highlight, pageNumber, allHighlights[pageNumber].length - 1);
+               console.log('New highlight created:', highlight);
+           }
 
-            function getCoordinates(e) {
-                const rect = pageContainer.getBoundingClientRect();
-                return [
-                    e.clientX - rect.left,
-                    e.clientY - rect.top
-                ];
-            }
+           function getCoordinates(e) {
+               const rect = pageContainer.getBoundingClientRect();
+               return [
+                   e.clientX - rect.left,
+                   e.clientY - rect.top
+               ];
+           }
 
-            function updateTempHighlight(startX, startY, endX, endY) {
-                let tempHighlight = document.getElementById('temp-highlight');
-                if (!tempHighlight) {
-                    tempHighlight = document.createElement('div');
-                    tempHighlight.id = 'temp-highlight';
-                    tempHighlight.className = 'highlight-area';
-                    highlightLayer.appendChild(tempHighlight);
-                }
-                tempHighlight.style.left = `${Math.min(startX, endX)}px`;
-                tempHighlight.style.top = `${Math.min(startY, endY)}px`;
-                tempHighlight.style.width = `${Math.abs(endX - startX)}px`;
-                tempHighlight.style.height = `${Math.abs(endY - startY)}px`;
-            }
-        }
+           function updateTempHighlight(startX, startY, endX, endY) {
+               let tempHighlight = document.getElementById('temp-highlight');
+               if (!tempHighlight) {
+                   tempHighlight = document.createElement('div');
+                   tempHighlight.id = 'temp-highlight';
+                   tempHighlight.className = 'highlight-area';
+                   highlightLayer.appendChild(tempHighlight);
+               }
+               tempHighlight.style.left = `${Math.min(startX, endX)}px`;
+               tempHighlight.style.top = `${Math.min(startY, endY)}px`;
+               tempHighlight.style.width = `${Math.abs(endX - startX)}px`;
+               tempHighlight.style.height = `${Math.abs(endY - startY)}px`;
+           }
+       }
 
-        function drawAllHighlights(highlightLayer, pageNumber) {
-            console.log(`Drawing highlights for page ${pageNumber}`);
-            highlightLayer.innerHTML = '';
-            if (!allHighlights[pageNumber]) return;
-            
-            allHighlights[pageNumber].forEach((highlight, index) => {
-                const highlightElement = document.createElement('div');
-                highlightElement.className = 'highlight-area';
-                highlightElement.style.left = `${Math.min(highlight.startX, highlight.endX)}px`;
-                highlightElement.style.top = `${Math.min(highlight.startY, highlight.endY)}px`;
-                highlightElement.style.width = `${Math.abs(highlight.endX - highlight.startX)}px`;
-                highlightElement.style.height = `${Math.abs(highlight.endY - highlight.startY)}px`;
-                
-                highlightElement.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    showCommentPopup(e, highlight, pageNumber, index);
-                });
+       function drawAllHighlights(highlightLayer, pageNumber) {
+           console.log(`Drawing highlights for page ${pageNumber}`);
+           highlightLayer.innerHTML = '';
+           if (!allHighlights[pageNumber]) return;
+          
+           allHighlights[pageNumber].forEach((highlight, index) => {
+               const highlightElement = document.createElement('div');
+               highlightElement.className = 'highlight-area';
+               highlightElement.style.left = `${Math.min(highlight.startX, highlight.endX)}px`;
+               highlightElement.style.top = `${Math.min(highlight.startY, highlight.endY)}px`;
+               highlightElement.style.width = `${Math.abs(highlight.endX - highlight.startX)}px`;
+               highlightElement.style.height = `${Math.abs(highlight.endY - highlight.startY)}px`;
+              
+               highlightElement.addEventListener('click', (e) => {
+                   e.stopPropagation();
+                   showCommentPopup(e, highlight, pageNumber, index);
+               });
 
-                highlightLayer.appendChild(highlightElement);
+               highlightLayer.appendChild(highlightElement);
 
-                if (highlight.comment) {
-                    const commentDisplay = document.createElement('div');
-                    commentDisplay.className = 'comment-display';
-                    commentDisplay.textContent = highlight.comment;
-                    commentDisplay.style.left = `${Math.max(highlight.startX, highlight.endX)}px`;
-                    commentDisplay.style.top = `${Math.min(highlight.startY, highlight.endY)}px`;
-                    highlightLayer.appendChild(commentDisplay);
-                }
-            });
-        }
+               if (highlight.comment) {
+                   const commentDisplay = document.createElement('div');
+                   commentDisplay.className = 'comment-display';
+                   commentDisplay.textContent = highlight.comment;
+                   commentDisplay.style.left = `${Math.max(highlight.startX, highlight.endX)}px`;
+                   commentDisplay.style.top = `${Math.min(highlight.startY, highlight.endY)}px`;
+                   highlightLayer.appendChild(commentDisplay);
+               }
+           });
+       }
 
-        function showCommentPopup(event, highlight, pageNumber, index) {
-            console.log('Showing comment popup');
-            const existingPopup = document.querySelector('.comment-popup');
-            if (existingPopup) existingPopup.remove();
+       function showCommentPopup(event, highlight, pageNumber, index) {
+           console.log('Showing comment popup');
+           const existingPopup = document.querySelector('.comment-popup');
+           if (existingPopup) existingPopup.remove();
 
-            const popup = document.createElement('div');
-            popup.className = 'comment-popup';
-            popup.style.left = `${event.pageX}px`;
-            popup.style.top = `${event.pageY}px`;
+           const popup = document.createElement('div');
+           popup.className = 'comment-popup';
+           popup.style.left = `${event.pageX}px`;
+           popup.style.top = `${event.pageY}px`;
 
-            const textarea = document.createElement('textarea');
-            textarea.className = 'comment-input';
-            textarea.value = highlight.comment || '';
-            textarea.placeholder = 'Add a comment...';
+           const textarea = document.createElement('textarea');
+           textarea.className = 'comment-input';
+           textarea.value = highlight.comment || '';
+           textarea.placeholder = 'Add a comment...';
 
-            const saveButton = document.createElement('button');
-            saveButton.className = 'save-button';
-            saveButton.textContent = 'Save';
-            saveButton.onclick = () => {
-                highlight.comment = textarea.value;
-                allHighlights[pageNumber][index] = highlight;
-                popup.remove();
-                console.log('Comment saved:', highlight.comment);
-                console.log('Updated highlights:', allHighlights);
-                const highlightLayer = event.target.closest('.highlight-layer');
-                drawAllHighlights(highlightLayer, pageNumber);
-            };
+           const saveButton = document.createElement('button');
+           saveButton.className = 'save-button';
+           saveButton.textContent = 'Save';
+           saveButton.onclick = () => {
+               highlight.comment = textarea.value;
+               allHighlights[pageNumber][index] = highlight;
+               popup.remove();
+               console.log('Comment saved:', highlight.comment);
+               console.log('Updated highlights:', allHighlights);
+               const highlightLayer = event.target.closest('.highlight-layer');
+               drawAllHighlights(highlightLayer, pageNumber);
+           };
 
-            const closeButton = document.createElement('button');
-            closeButton.className = 'close-button';
-            closeButton.textContent = 'Close';
-            closeButton.onclick = () => popup.remove();
+           const closeButton = document.createElement('button');
+           closeButton.className = 'close-button';
+           closeButton.textContent = 'Close';
+           closeButton.onclick = () => popup.remove();
 
-            popup.appendChild(textarea);
-            popup.appendChild(saveButton);
-            popup.appendChild(closeButton);
-            document.body.appendChild(popup);
+           popup.appendChild(textarea);
+           popup.appendChild(saveButton);
+           popup.appendChild(closeButton);
+           document.body.appendChild(popup);
 
-            textarea.focus();
-        }
+           textarea.focus();
+       }
 
-        function undoLastHighlight() {
-            let lastPageWithHighlight = null;
-            for (let i = pdfDocument.numPages; i > 0; i--) {
-                if (allHighlights[i] && allHighlights[i].length > 0) {
-                    lastPageWithHighlight = i;
-                    break;
-                }
-            }
+       function undoLastHighlight() {
+           let lastPageWithHighlight = null;
+           for (let i = pdfDocument.numPages; i > 0; i--) {
+               if (allHighlights[i] && allHighlights[i].length > 0) {
+                   lastPageWithHighlight = i;
+                   break;
+               }
+           }
 
-            if (lastPageWithHighlight) {
-                allHighlights[lastPageWithHighlight].pop();
-                const pageContainer = document.querySelectorAll('.page-container')[lastPageWithHighlight - 1];
-                const highlightLayer = pageContainer.querySelector('.highlight-layer');
-                drawAllHighlights(highlightLayer, lastPageWithHighlight);
-                console.log('Undo highlight on page:', lastPageWithHighlight);
-            }
-        }
+           if (lastPageWithHighlight) {
+               allHighlights[lastPageWithHighlight].pop();
+               const pageContainer = document.querySelectorAll('.page-container')[lastPageWithHighlight - 1];
+               const highlightLayer = pageContainer.querySelector('.highlight-layer');
+               drawAllHighlights(highlightLayer, lastPageWithHighlight);
+               console.log('Undo highlight on page:', lastPageWithHighlight);
+           }
+       }
 
-        document.addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                undoLastHighlight();
-            }
-        });
-    </script>
+       document.addEventListener('keydown', function(e) {
+           if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+               e.preventDefault();
+               undoLastHighlight();
+           }
+       });
+
+       document.getElementById('chat-input').addEventListener('keypress', function(e) {
+           if (e.key === 'Enter') {
+               const query = e.target.value;
+               e.target.value = '';
+               addChatMessage('You', query);
+
+               fetch('/chat', {
+                   method: 'POST',
+                   headers: {
+                       'Content-Type': 'application/json',
+                   },
+                   body: JSON.stringify({
+                       filename: "{{ filename }}",
+                       query: query
+                   }),
+               })
+               .then(response => response.json())
+               .then(data => {
+                   if (data.response) {
+                       addChatMessage('Bot', data.response);
+                   }
+               });
+           }
+       });
+
+       function addChatMessage(sender, message) {
+           const chatContent = document.getElementById('chat-content');
+           const messageElement = document.createElement('div');
+           messageElement.textContent = `${sender}: ${message}`;
+           chatContent.appendChild(messageElement);
+           chatContent.scrollTop = chatContent.scrollHeight;
+       }
+   </script>
 </body>
 </html>
-
-<!-- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Viewer with Highlighting and Comments</title>
-    <script src="{{ url_for('static', filename='pdfjs/pdf.mjs') }}" type="module"></script>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-        }
-        #pdf-viewer {
-            max-width: 800px;
-            width: 100%;
-            margin: 20px auto;
-        }
-        .page-container {
-            position: relative;
-            margin-bottom: 20px;
-        }
-        .page {
-            box-shadow: 0 0 10px rgba(0,0,0,0.3);
-        }
-        .highlight-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-        .highlight-area {
-            position: absolute;
-            background-color: rgba(255, 255, 0, 0.3);
-            cursor: pointer;
-        }
-        .comment-popup {
-            position: absolute;
-            background-color: white;
-            border: 1px solid #ccc;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            z-index: 1000;
-        }
-        .comment-input {
-            width: 200px;
-            height: 100px;
-            margin-bottom: 10px;
-        }
-        .save-button, .cancel-button {
-            margin-right: 5px;
-        }
-    </style>
-</head>
-<body>
-    <div id="pdf-viewer"></div>
-    <div id="error-message" style="color: red; text-align: center;"></div>
-    <script type="module">
-        import * as pdfjsLib from "{{ url_for('static', filename='pdfjs/pdf.mjs') }}";
-
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "{{ url_for('static', filename='pdfjs/pdf.worker.mjs') }}";
-
-        const url = "{{ url_for('uploaded_file', filename=filename) }}";
-        const loadingTask = pdfjsLib.getDocument(url);
-        const scale = 1.5;
-        let pdfDocument = null;
-        let allHighlights = {};
-
-        loadingTask.promise.then(function(pdf) {
-            pdfDocument = pdf;
-            const viewer = document.getElementById('pdf-viewer');
-
-            function renderPage(pageNumber) {
-                pdf.getPage(pageNumber).then(function(page) {
-                    const viewport = page.getViewport({scale: scale});
-
-                    const pageContainer = document.createElement('div');
-                    pageContainer.className = 'page-container';
-                    pageContainer.style.width = `${viewport.width}px`;
-                    pageContainer.style.height = `${viewport.height}px`;
-
-                    const canvas = document.createElement('canvas');
-                    canvas.className = 'page';
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-
-                    const renderContext = {
-                        canvasContext: context,
-                        viewport: viewport
-                    };
-
-                    const highlightLayer = document.createElement('div');
-                    highlightLayer.className = 'highlight-layer';
-                    highlightLayer.style.width = `${viewport.width}px`;
-                    highlightLayer.style.height = `${viewport.height}px`;
-
-                    pageContainer.appendChild(canvas);
-                    pageContainer.appendChild(highlightLayer);
-                    viewer.appendChild(pageContainer);
-
-                    page.render(renderContext);
-
-                    setupHighlighting(pageContainer, highlightLayer, page, viewport, pageNumber);
-
-                    if (pageNumber < pdf.numPages) {
-                        renderPage(pageNumber + 1);
-                    }
-                });
-            }
-
-            renderPage(1);
-        }).catch(function(error) {
-            console.error("Error loading PDF:", error);
-            document.getElementById('error-message').textContent = "Error loading PDF: " + error.message;
-        });
-
-        function setupHighlighting(pageContainer, highlightLayer, page, viewport, pageNumber) {
-            let isHighlighting = false;
-            let startX, startY;
-            allHighlights[pageNumber] = [];
-
-            pageContainer.style.position = 'relative';
-            highlightLayer.style.position = 'absolute';
-            highlightLayer.style.top = '0';
-            highlightLayer.style.left = '0';
-
-            pageContainer.addEventListener('mousedown', startHighlighting);
-            pageContainer.addEventListener('mousemove', drawHighlight);
-            pageContainer.addEventListener('mouseup', endHighlighting);
-
-            function startHighlighting(e) {
-                isHighlighting = true;
-                [startX, startY] = getCoordinates(e);
-            }
-
-            function drawHighlight(e) {
-                if (!isHighlighting) return;
-
-                const [endX, endY] = getCoordinates(e);
-                updateTempHighlight(startX, startY, endX, endY);
-            }
-
-            function endHighlighting(e) {
-                if (!isHighlighting) return;
-
-                isHighlighting = false;
-                const [endX, endY] = getCoordinates(e);
-
-                const highlight = {startX, startY, endX, endY, comment: ''};
-                allHighlights[pageNumber].push(highlight);
-                drawAllHighlights(highlightLayer, pageNumber);
-                showCommentPopup(e, highlight, pageNumber, allHighlights[pageNumber].length - 1);
-
-                console.log('New highlight:', {pageNumber, ...highlight});
-            }
-
-            function getCoordinates(e) {
-                const rect = pageContainer.getBoundingClientRect();
-                return [
-                    e.clientX - rect.left,
-                    e.clientY - rect.top
-                ];
-            }
-
-            function updateTempHighlight(startX, startY, endX, endY) {
-                const tempHighlight = document.getElementById('temp-highlight');
-                if (tempHighlight) {
-                    tempHighlight.style.left = `${Math.min(startX, endX)}px`;
-                    tempHighlight.style.top = `${Math.min(startY, endY)}px`;
-                    tempHighlight.style.width = `${Math.abs(endX - startX)}px`;
-                    tempHighlight.style.height = `${Math.abs(endY - startY)}px`;
-                } else {
-                    const newTempHighlight = document.createElement('div');
-                    newTempHighlight.id = 'temp-highlight';
-                    newTempHighlight.className = 'highlight-area';
-                    newTempHighlight.style.left = `${Math.min(startX, endX)}px`;
-                    newTempHighlight.style.top = `${Math.min(startY, endY)}px`;
-                    newTempHighlight.style.width = `${Math.abs(endX - startX)}px`;
-                    newTempHighlight.style.height = `${Math.abs(endY - startY)}px`;
-                    highlightLayer.appendChild(newTempHighlight);
-                }
-            }
-        }
-
-        function drawAllHighlights(highlightLayer, pageNumber) {
-            highlightLayer.innerHTML = '';
-            allHighlights[pageNumber].forEach((highlight, index) => {
-                const highlightElement = document.createElement('div');
-                highlightElement.className = 'highlight-area';
-                highlightElement.style.left = `${Math.min(highlight.startX, highlight.endX)}px`;
-                highlightElement.style.top = `${Math.min(highlight.startY, highlight.endY)}px`;
-                highlightElement.style.width = `${Math.abs(highlight.endX - highlight.startX)}px`;
-                highlightElement.style.height = `${Math.abs(highlight.endY - highlight.startY)}px`;
-                
-                highlightElement.addEventListener('click', (e) => showCommentPopup(e, highlight, pageNumber, index));
-
-                highlightLayer.appendChild(highlightElement);
-            });
-        }
-
-        function showCommentPopup(event, highlight, pageNumber, index) {
-            const existingPopup = document.querySelector('.comment-popup');
-            if (existingPopup) existingPopup.remove();
-
-            const popup = document.createElement('div');
-            popup.className = 'comment-popup';
-            popup.style.left = `${event.pageX}px`;
-            popup.style.top = `${event.pageY}px`;
-
-            const textarea = document.createElement('textarea');
-            textarea.className = 'comment-input';
-            textarea.value = highlight.comment || '';
-            textarea.placeholder = 'Add a comment...';
-
-            const saveButton = document.createElement('button');
-            saveButton.className = 'save-button';
-            saveButton.textContent = 'Save';
-            saveButton.onclick = () => {
-                highlight.comment = textarea.value;
-                allHighlights[pageNumber][index] = highlight;
-                popup.remove();
-                console.log('Comment saved:', highlight.comment);
-            };
-
-            const cancelButton = document.createElement('button');
-            cancelButton.className = 'cancel-button';
-            cancelButton.textContent = 'Cancel';
-            cancelButton.onclick = () => popup.remove();
-
-            popup.appendChild(textarea);
-            popup.appendChild(saveButton);
-            popup.appendChild(cancelButton);
-            document.body.appendChild(popup);
-
-            textarea.focus();
-        }
-
-        function undoLastHighlight() {
-            let lastPageWithHighlight = null;
-            for (let i = pdfDocument.numPages; i > 0; i--) {
-                if (allHighlights[i] && allHighlights[i].length > 0) {
-                    lastPageWithHighlight = i;
-                    break;
-                }
-            }
-
-            if (lastPageWithHighlight) {
-                allHighlights[lastPageWithHighlight].pop();
-                const pageContainer = document.querySelectorAll('.page-container')[lastPageWithHighlight - 1];
-                const highlightLayer = pageContainer.querySelector('.highlight-layer');
-                drawAllHighlights(highlightLayer, lastPageWithHighlight);
-                console.log('Undo highlight on page:', lastPageWithHighlight);
-            }
-        }
-
-        document.addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-                e.preventDefault();
-                undoLastHighlight();
-            }
-        });
-    </script>
-</body>
-</html> -->

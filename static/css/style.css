@@ -6,46 +6,47 @@ body {
     flex-direction: column;
     align-items: center;
     background-color: #f0f0f0;
-}
-
-#pdf-container {
-    width: 80%;
+ }
+ 
+ #pdf-container {
+    width: 40%;
     margin-top: 20px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-#pdf-render {
+    box-shadow: 0 0 10px rgba(183, 23, 23, 0.1);
+ }
+ 
+ #pdf-render {
     border: 1px solid #ddd;
     margin: 0 auto;
-}
-
-#annotation-box {
+ }
+ 
+ #annotation-box {
     position: absolute;
     background: #fff;
     border: 1px solid #ddd;
     border-radius: 4px;
     padding: 10px;
     box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
-}
-
-#note-input {
+ }
+ 
+ #note-input {
     width: 200px;
     height: 50px;
     padding: 5px;
     margin-bottom: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
-}
-
-#save-note {
+ }
+ 
+ #save-note {
     padding: 5px 10px;
     background-color: #007bff;
     color: #fff;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-}
-
-#save-note:hover {
+ }
+ 
+ #save-note:hover {
     background-color: #0056b3;
-}
+ }
+ 
