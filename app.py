@@ -7,7 +7,6 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import PyPDFLoader
-from langchain.chains.question_answering import load_qa_chain
 
 # Initialize the Flask app
 app = Flask(__name__)
@@ -33,20 +32,19 @@ def create_chain(pdf_path):
     # Set up the LLM
     llm = ChatOpenAI(model="gpt-4")
 
-    # Load the QA chain
-    qa_chain = load_qa_chain(llm, chain_type="stuff")
-
     # Create the ConversationalRetrievalChain
-    chain = ConversationalRetrievalChain(
+    chain = ConversationalRetrievalChain.from_llm(
+        llm=llm,
         retriever=vector_store.as_retriever(),
-        combine_docs_chain=qa_chain
-        # No question_generator is provided if it isn't necessary
+        return_source_documents=True,
+        return_generated_question=True,
     )
     
     return chain
 
-# Store the chains in memory for each PDF
+# Store the chains and histories in memory
 chains = {}
+chat_histories = {}  # To keep track of chat histories and context
 
 @app.route('/')
 def index():
@@ -64,6 +62,7 @@ def upload_file():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         chains[filename] = create_chain(filepath)  # Create a chain for this PDF
+        chat_histories[filename] = {'chat_history': [], 'context': ""}  # Initialize chat history and context
         print(f"File saved to: {filepath}")
         return render_template('viewer.html', filename=filename)
     return 'Invalid file type', 400
@@ -82,9 +81,32 @@ def chat():
         return jsonify({"error": "PDF not found"}), 404
 
     chain = chains[filename]
-    response = chain.run(input=query)
+    history = chat_histories.get(filename, {'chat_history': [], 'context': ""})
+    chat_history = history['chat_history']
+
+    # Use the chat history to maintain context
+    inputs = {
+        'question': query,
+        'chat_history': chat_history
+    }
     
-    return jsonify({"response": response})
+    response = chain(inputs)
+
+    # Extract the answer and the generated question (which serves as context)
+    answer = response['answer']
+    generated_question = response.get('generated_question', "")
+
+    # Update chat history with the new question, answer, and generated question
+    chat_history.append((query, answer))
+    chat_histories[filename] = {
+        'chat_history': chat_history, 
+        'context': generated_question
+    }
+
+    return jsonify({
+        "response": answer,
+        "context": generated_question
+    })
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
