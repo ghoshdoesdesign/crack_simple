@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, render_template, send_from_directory, jsonify
 import openai
+from pyzotero import zotero
 from langchain.chains import ConversationalRetrievalChain
 from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
@@ -14,6 +15,9 @@ app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__fil
 
 # Set up OpenAI API key
 openai.api_key = 'sk-68Y7HODIib0kJGpK5v9RIj2gLpasocp-VibzRNdUn-T3BlbkFJFbcqLR55JpgX6H1RSL2Osvl1DqppuKVLSUAm7IJSMA'  # Replace with your actual API key
+
+# Set up Zotero API
+zot = zotero.Zotero('10305233', 'user', 'rm5BW5WnXRfXlelUKKus1ZJP')
 
 # Function to create LangChain pipeline
 def create_chain(pdf_path):
@@ -77,6 +81,37 @@ def upload_file():
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+def retrieve_zotero():
+    # Fetch all items from the Zotero library
+    items = zot.everything(zot.items())
+
+    # Directory to store Zotero files in
+    # TODO: Add in directory
+    download_dir = '' 
+
+    # Download each attachment if it is a PDF
+    for item in items:
+        # Check if the item has an attachment and is a PDF
+        if 'data' in item and 'contentType' in item['data'] and item['data']['contentType'] == 'application/pdf':
+            file_name = item['data'].get('filename', f"{item['data']['key']}.pdf")
+            file_path = os.path.join(download_dir, file_name)
+            
+            # Extract the item key to use with zot.file()
+            item_key = item['data']['key']
+            print(f"Downloading {file_name}...")
+            
+            # Retrieve the file
+            attachment = zot.file(item_key)
+            
+            if attachment:
+                with open(file_path, 'wb') as f:
+                    f.write(attachment)
+            else:
+                print(f"Failed to download {file_name}.")
+        else:
+            print(f"Skipping item {item['data']['key']}: Not a PDF.")
+    
 
 @app.route('/chat', methods=['POST'])
 def chat():
