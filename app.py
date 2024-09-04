@@ -46,6 +46,11 @@ def create_chain(pdf_path):
 chains = {}
 chat_histories = {}  # To keep track of chat histories and context
 
+# Store notes and highlights in memory (for simplicity)
+# In a production app, consider using a database
+notes_storage = {}
+highlights_storage = {}
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -63,6 +68,8 @@ def upload_file():
         file.save(filepath)
         chains[filename] = create_chain(filepath)  # Create a chain for this PDF
         chat_histories[filename] = {'chat_history': [], 'context': ""}  # Initialize chat history and context
+        notes_storage[filename] = []  # Initialize notes storage
+        highlights_storage[filename] = {}  # Initialize highlights storage
         print(f"File saved to: {filepath}")
         return render_template('viewer.html', filename=filename)
     return 'Invalid file type', 400
@@ -107,6 +114,45 @@ def chat():
         "response": answer,
         "context": generated_question
     })
+
+@app.route('/save_note', methods=['POST'])
+def save_note():
+    data = request.json
+    filename = data.get('filename')
+    note = data.get('note')
+
+    if filename not in chains:
+        return jsonify({"error": "PDF not found"}), 404
+
+    # Store the note
+    notes_storage[filename].append(note)
+
+    return jsonify({"success": True})
+
+@app.route('/save_highlight', methods=['POST'])
+def save_highlight():
+    data = request.json
+    filename = data.get('filename')
+    page_number = data.get('page_number')
+    highlight = data.get('highlight')  # Should contain coordinates and comment
+
+    if filename not in chains:
+        return jsonify({"error": "PDF not found"}), 404
+
+    if page_number not in highlights_storage[filename]:
+        highlights_storage[filename][page_number] = []
+    
+    highlights_storage[filename][page_number].append(highlight)
+
+    return jsonify({"success": True})
+
+@app.route('/get_highlights', methods=['GET'])
+def get_highlights():
+    filename = request.args.get('filename')
+    if not filename or filename not in chains:
+        return jsonify({"error": "PDF not found"}), 404
+    
+    return jsonify({"highlights": highlights_storage.get(filename, {})})
 
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
