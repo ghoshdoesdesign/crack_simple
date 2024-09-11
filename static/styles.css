@@ -1,0 +1,266 @@
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #191A23;
+    display: flex;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    overflow: hidden;
+    justify-content: space-between;
+}
+.sidebar {
+    background-color: #191A23;
+    border-right-style: solid;
+    border-right-color: #2C2D3C;
+    width: 220px;
+    padding: 0px 10px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+.pdf-list {
+    margin-top: 0px;
+    flex-grow: 1;
+}
+.pdf-item {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+    text-decoration: none;
+    color: #EEEFFC;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+}
+.pdf-item img {
+    margin-right: 10px;
+    width: 20px;
+    height: 20px;
+}
+.pdf-item span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+}
+.upload-section {
+    display: flex;
+    color: #EEEFFC;
+    font-weight: normal;
+    /* margin-bottom: 20px; */
+}
+.logo-icon {
+    width: 31px;
+    height: 23px;
+    margin-right: 5px;
+    align-items: center;
+}
+.title {
+    display: flex;
+    font-size: medium;
+    font-family: 'Inter', sans-serif;
+    font-weight: normal;
+    color: #EEEFFC;
+    align-items: center;
+}
+iframe {
+    border: none;
+    flex-grow: 2;
+    height: 100vh;
+}
+/* Two lines of text with pictures in the bottom left */
+.bottom-left-info {
+    color: #858699;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    flex-direction: column;
+    margin-top: auto; /* Pushes the bottom-left section to the bottom */
+    margin-bottom: 10px;
+    margin-left: 5px;
+}
+.info-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.info-item img {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+.info-item p {
+    margin: 0;
+    font-size: 14px;
+}
+/* Hide the default file input */
+#file-upload {
+    display: none;
+}
+/* Icon in the button */
+.upload-icon {
+    width: 15px; /* Adjust size as needed */
+    height: 15px; /* Adjust size as needed */
+    margin-right: 10px; /* Space between icon and text */
+}
+/* Custom file upload button */
+.custom-file-upload {
+    height: 10px;
+    width: 170px;
+    display: inline-block;
+    padding: 10px 10px;
+    background-color: #292A35; /* Button background color */
+    font-family: 'Inter', sans-serif;
+    color: #EEEFFC; /* Button text color */
+    border-radius: 4px; /* Rounded corners */
+    border-style: solid;
+    border-color: #393A4B;
+    cursor: pointer;
+    font-size: 14px;
+    vertical-align:text-top;
+    text-align: left;
+    transition: background-color 0.3s ease; /* Animation on hover */
+    margin-bottom: 10px;
+}
+.custom-file-upload:hover {
+    background-color: #00050a; /* Darker shade on hover */
+}
+
+/* Right-hand section */
+.right-section {
+    width: 480px; /* Adjust width as necessary */
+    background-color: #1D1E2B; /* Match the overall color scheme */
+    padding: 10px 20px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+    border-left-style: solid;
+    border-left-color: #2C2D3C;
+}
+
+/* Notes section */
+.notes-heading {
+    color: #FAFAFF;
+    text-decoration: underline;
+    text-underline-offset: 6px;
+    font-weight: normal;
+    font-size: medium;
+    border-bottom: 2px;
+}
+
+
+.notes-section {
+    position: relative; /* Allows absolute positioning of the save button */
+}
+
+#notes-area {
+    width: 100%;
+    height: 297px;
+    padding: 10px;
+    background-color: #191A23;
+    border: 1px solid #393A4B;
+    color: rgba(256,256,256, 0.6);
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    resize: none;
+    box-sizing: border-box; /* Ensures padding doesn't affect total width */
+}
+
+#notes-area::placeholder {
+    color: #858699;
+}
+
+#save-notes-btn {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    padding: 8px 12px;
+    background-color: #393A4B;
+    color: #D2D3E0;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+#save-notes-btn:hover {
+    background-color: #00050a; /* Darker shade on hover */
+}
+
+
+/* Ask Ptolemy section */
+.ask-section {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Space between elements */
+}
+
+/* Displayed questions */
+#asked-questions {
+    background-color: #191A23;
+    padding: 10px;
+    height: 300px;
+    border: 1px solid #393A4B;
+    color: #EEEFFC;
+    border-radius: 4px;
+    overflow-y: auto;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+/* Text area to ask questions */
+#ask-input {
+    height: 50px;
+    padding: 10px;
+    background-color: #191A23;
+    border: 1px solid #393A4B;
+    color: #EEEFFC;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    resize: none;
+}
+
+/* Styling for the Ask Ptolemy heading */
+.ask-heading {
+    color: #EEEFFC;
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    font-weight: 500;
+    position: relative;
+}
+
+/* Underline effect */
+.ask-heading::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 2px;
+    background-color: #393A4B;
+    margin-top: 5px;
+}
+
+
+#pdf-container {
+    width: 800px;
+    height: 100vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+/* #pdf-canvas {
+    width: 700px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+} */
+
+#pdf-viewer {
+    width: 700px;
+    height: 100vh;
+    border: none;
+}

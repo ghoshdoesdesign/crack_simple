@@ -1,49 +1,225 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <meta charset="UTF-8">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <title>PDF Uploader</title>
-   <style>
-       body {
-           font-family: Arial, sans-serif;
-           display: flex;
-           justify-content: center;
-           align-items: center;
-           height: 100vh;
-           margin: 0;
-           background-color: #f0f0f0;
-       }
-       form {
-           background-color: white;
-           padding: 20px;
-           border-radius: 8px;
-           box-shadow: 0 0 10px rgba(0,0,0,0.1);
-       }
-       h1 {
-           margin-top: 0;
-       }
-       input[type="file"] {
-           margin-bottom: 10px;
-       }
-       input[type="submit"] {
-           background-color: #4CAF50;
-           color: white;
-           padding: 10px 15px;
-           border: none;
-           border-radius: 4px;
-           cursor: pointer;
-       }
-       input[type="submit"]:hover {
-           background-color: #45a049;
-       }
-   </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plato</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
 </head>
 <body>
-   <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data">
-       <h1>Upload a PDF</h1>
-       <input type="file" name="file" accept=".pdf" required>
-       <input type="submit" value="Upload">
-   </form>
+
+    <!-- Left-side Sidebar -->
+    <div class="sidebar">
+        <div class="title">
+            <h2>
+                <img src="{{ url_for('static', filename='plato_logo.svg') }}" alt="Plato Logo" class="logo-icon">
+                <span>{{ pdf }}</span>
+            </h2>
+            <h2 class="title">Plato</h2>
+        </div>
+
+        <!-- Upload PDF Section -->
+        <div class="upload-section">
+            <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data">
+                <label for="file-upload" class="custom-file-upload">
+                    <img src="{{ url_for('static', filename='upload-icon.svg') }}" alt="Upload Icon" class="upload-icon">
+                    Upload PDF
+                </label>
+                <input id="file-upload" type="file" name="file" accept=".pdf" required>
+            </form>
+        </div>
+
+        <!-- File Upload Form
+        <form action="/upload" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".pdf, .txt" required>
+            <button type="submit">Upload</button>
+        </form> -->
+
+        <!-- List of uploaded PDFs -->
+        <div class="pdf-list">
+            {% for pdf in pdfs %}
+                <a class="pdf-item" data-pdf-name="{{ pdf }}" href="{{ url_for('uploaded_file', filename=pdf) }}" target="pdf-viewer">
+                    <img src="{{ url_for('static', filename='pdf_icon.svg') }}" alt="PDF Icon">
+                    <span>{{ pdf }}</span>
+                </a>
+            {% endfor %}
+        </div>
+        
+
+        <!-- Two lines of text with images in the bottom left corner -->
+        <div class="bottom-left-info">
+            <div class="info-item">
+                <img src="{{ url_for('static', filename='twitter.svg') }}" alt="Icon 1">
+                <p>Like us? Follow us on X</p>
+            </div>
+            <div class="info-item">
+                <img src="{{ url_for('static', filename='book.svg') }}" alt="Icon 2">
+                <p>Help & Support</p>
+            </div>
+        </div>
+
+    </div>
+
+
+
+    <!-- PDF Viewer -->
+    <iframe name="pdf-viewer" src="" frameborder="0"></iframe>
+
+
+
+    
+
+    <!-- JavaScript to auto-submit the form -->
+    <script>
+        document.getElementById('file-upload').addEventListener('change', function() {
+            document.getElementById('upload-form').submit();
+        });
+    </script>
+
+
+    <!-- Right Hand Side-->
+    <div class="right-section">
+        <h3 class="notes-heading">Notes</h3>
+        <div class="notes-section">
+            <textarea id="notes-area" placeholder="Enter your notes here..."></textarea>
+            <button id="save-notes-btn">Save</button>
+        </div>
+        <!-- Ask Ptolemy Section -->
+        <div class="ask-section">
+            <h3 class="notes-heading">Ask Ptolemy</h3>
+            
+            <!-- Displayed Question -->
+            <div id="asked-questions">
+                <!-- User-entered questions will appear here -->
+            </div>
+    
+            <!-- Textbox for entering questions -->
+            <textarea id="ask-input" placeholder="Ask Ptolemy a question..."></textarea>
+        </div>
+    </div>
+
+
+    <script>
+        let currentPdf = null; // Variable to track the currently selected PDF
+    
+        // Function to save notes for the current PDF
+        document.getElementById('save-notes-btn').addEventListener('click', function() {
+            if (currentPdf) {
+                const notes = document.getElementById('notes-area').value;
+                localStorage.setItem(`notes_${currentPdf}`, notes);
+            } else {
+                alert('Please select a PDF before saving notes.');
+            }
+        });
+    
+        // Function to handle the "Enter" key press for the Ask Ptolemy textarea
+        document.getElementById('ask-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevents default behavior of "Enter" key
+    
+                const askInput = document.getElementById('ask-input');
+                const askedQuestions = document.getElementById('asked-questions');
+                const userQuery = askInput.value;
+    
+                // Display the user's question
+                const questionDiv = document.createElement('div');
+                questionDiv.textContent = userQuery;
+                questionDiv.style.fontWeight = 'bold';
+                askedQuestions.appendChild(questionDiv);
+    
+                // Send the question to the Flask backend
+                if (currentPdf) {
+                    fetch('/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            query: userQuery
+                        }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Display the response from Ptolemy
+                        const responseDiv = document.createElement('div');
+                        responseDiv.textContent = data.response;
+                        responseDiv.style.fontStyle = 'italic';
+                        askedQuestions.appendChild(responseDiv);
+    
+                        // Save the question and response in localStorage with the current PDF as key
+                        let chatHistory = JSON.parse(localStorage.getItem(`chat_${currentPdf}`)) || [];
+                        chatHistory.push({ question: userQuery, response: data.response });
+                        localStorage.setItem(`chat_${currentPdf}`, JSON.stringify(chatHistory));
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        const errorDiv = document.createElement('div');
+                        errorDiv.textContent = 'Error: Could not connect to the server.';
+                        errorDiv.style.color = 'red';
+                        askedQuestions.appendChild(errorDiv);
+                    });
+                }
+    
+                // Clear the input field
+                askInput.value = '';
+            }
+        });
+    
+        // Function to load both notes and the Ask Ptolemy question for the selected PDF
+        function loadContentForPdf(pdfName) {
+            currentPdf = pdfName;
+    
+            // Load notes
+            const savedNotes = localStorage.getItem(`notes_${currentPdf}`);
+            document.getElementById('notes-area').value = savedNotes ? savedNotes : '';
+    
+            // Load chat history for Ask Ptolemy
+            const chatHistory = JSON.parse(localStorage.getItem(`chat_${currentPdf}`)) || [];
+            const askedQuestions = document.getElementById('asked-questions');
+            askedQuestions.innerHTML = ''; // Clear previous content
+    
+            chatHistory.forEach(entry => {
+                const questionDiv = document.createElement('div');
+                questionDiv.textContent = entry.question;
+                questionDiv.style.fontWeight = 'bold';
+                askedQuestions.appendChild(questionDiv);
+    
+                const responseDiv = document.createElement('div');
+                responseDiv.textContent = entry.response;
+                responseDiv.style.fontStyle = 'italic';
+                askedQuestions.appendChild(responseDiv);
+            });
+        }
+    
+        // Attach loadContentForPdf function to the PDF links
+        document.querySelectorAll('.pdf-item').forEach(function(pdfLink) {
+            pdfLink.addEventListener('click', function(e) {
+                const pdfName = pdfLink.getAttribute('data-pdf-name');
+                loadContentForPdf(pdfName);
+            });
+        });
+    
+        // Load the first PDF's content on page load (if needed)
+        window.onload = function() {
+            const firstPdfLink = document.querySelector('.pdf-item');
+            if (firstPdfLink) {
+                const firstPdfName = firstPdfLink.getAttribute('data-pdf-name');
+                loadContentForPdf(firstPdfName);
+            }
+        };
+    </script>
+    
+    
+    
+
+
+    
+    
+
+
+</div>
+
 </body>
 </html>

@@ -1,0 +1,85 @@
+/* Make the background image cover the full viewport */
+.background-img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensures the image covers the area without distortion */
+    z-index: -1; /* Places the image behind the content */
+}
+
+/* Body layout */
+body {
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+/* Top-left text */
+.top-left-text {
+    position: absolute;
+    top: 20px;  /* Adjust for desired spacing from the top */
+    left: 200px; /* Adjust for desired spacing from the left */
+    color: #EEEFFC; /* Text color */
+    font-family: 'Inter', sans-serif;
+    font-size: 18px;
+    z-index: 1; /* Ensure text appears on top of background */
+}
+/* Position the container towards the left */
+.landing-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; /* Align text to the left */
+    margin-left: 200px;       /* Adjust the margin to control how far from the left it should be */
+    max-width: 600px;        /* Limit the maximum width */
+    z-index: 1;
+}
+
+/* Text Container 1 - unique styling */
+.text-container-one {
+	margin-top: 50px;
+	margin-bottom: 10px;
+    text-align: left;
+	width: 1000px;
+	font-family: 'Inter', sans-serif;
+    font-size: 36px;
+    color: #FAFAFF; /* Light color */
+    font-weight: bold; /* Bold text */
+}
+
+/* Text Container 2 - unique styling */
+.text-container-two {
+    margin-bottom: 10px;
+	width: 500px;
+    text-align: left;
+	font-family: 'Inter', sans-serif;
+    font-size: 8px;
+    color: #FAFAFF; /* Gold color */
+}
+
+/* Remove default margins from h1 tags inside the containers */
+.text-container-one h1, .text-container-two h1 {
+    margin: 0; /* Removes any default margins from heading elements */
+}
+
+/* Button Styling */
+.enter-btn {
+    padding: 10px 20px;
+    background-color: #FFFDFD;
+    color: #000000;
+    font-size: 18px;
+    font-family: 'Inter', sans-serif;
+    border: 2px solid #393A4B;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 20px;
+}
+
+/* Button Hover Effect */
+.enter-btn:hover {
+    background-color: #00050a;
+}
