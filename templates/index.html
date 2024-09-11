@@ -114,7 +114,6 @@
             }
         });
     
-        // Function to handle the "Enter" key press for the Ask Ptolemy textarea
         document.getElementById('ask-input').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault(); // Prevents default behavior of "Enter" key
@@ -137,7 +136,8 @@
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            query: userQuery
+                            query: userQuery,
+                            pdf_name: currentPdf
                         }),
                     })
                     .then(response => response.json())
@@ -166,7 +166,7 @@
                 askInput.value = '';
             }
         });
-    
+
         // Function to load both notes and the Ask Ptolemy question for the selected PDF
         function loadContentForPdf(pdfName) {
             currentPdf = pdfName;
