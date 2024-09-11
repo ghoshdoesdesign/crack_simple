@@ -25,7 +25,6 @@ if not os.path.exists(UPLOAD_FOLDER):
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Initialize Langchain with OpenAI's GPT model
-#openai_api_key = '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'  # Replace with your OpenAI API key
 llm = OpenAI(api_key=openai_api_key)
 
 
