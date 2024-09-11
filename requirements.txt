@@ -1,4 +1,0 @@
-Flask
-Flask-SQLAlchemy
-PyMuPDF  # Optional, if you want to do more with PDFs
-sk-68Y7HODIib0kJGpK5v9RIj2gLpasocp-VibzRNdUn-T3BlbkFJFbcqLR55JpgX6H1RSL2Osvl1DqppuKVLSUAm7IJSMA
