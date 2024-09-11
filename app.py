@@ -24,7 +24,6 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Initialize Langchain with OpenAI's GPT model
 
 
 # Store the chains and histories in memory
