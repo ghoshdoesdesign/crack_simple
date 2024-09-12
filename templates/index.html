@@ -31,12 +31,6 @@
             </form>
         </div>
 
-        <!-- File Upload Form
-        <form action="/upload" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" accept=".pdf, .txt" required>
-            <button type="submit">Upload</button>
-        </form> -->
-
         <!-- List of uploaded PDFs -->
         <div class="pdf-list">
             {% for pdf in pdfs %}
@@ -63,9 +57,174 @@
     </div>
 
 
-
     <!-- PDF Viewer -->
-    <iframe name="pdf-viewer" src="" frameborder="0"></iframe>
+    <div id="pdf-viewer" class="pdf-viewer">
+        <div id="pdf-container"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script>
+        let pdfDoc = null,
+            currentPage = 1,
+            scale = 1.5,
+            pdfContainer = document.getElementById('pdf-container');
+        let highlights = {};
+
+        function renderPage(num) {
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({scale: scale});
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+
+                canvas.setAttribute('data-page-number', num);
+                pdfContainer.appendChild(canvas);
+
+                page.render(renderContext);
+            });
+        }
+
+        function loadAndRenderPDF(pdfUrl) {
+            pdfjsLib.getDocument(pdfUrl).promise.then(function(pdf) {
+                pdfDoc = pdf;
+                pdfContainer.innerHTML = ''; // Clear existing content
+
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    renderPage(pageNum);
+                }
+            });
+        }
+
+        function addHighlight(event) {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+                const highlight = document.createElement('div');
+                highlight.className = 'highlight';
+                highlight.style.position = 'absolute';
+                highlight.style.left = `${rect.left}px`;
+                highlight.style.top = `${rect.top}px`;
+                highlight.style.width = `${rect.width}px`;
+                highlight.style.height = `${rect.height}px`;
+                highlight.style.backgroundColor = 'yellow';
+                highlight.style.opacity = '0.5';
+                
+                pdfContainer.appendChild(highlight);
+                
+                showCommentBox(highlight);
+            }
+        }
+
+        function showCommentBox(highlight) {
+            const commentBox = document.createElement('div');
+            commentBox.className = 'comment-box';
+            commentBox.innerHTML = `
+                <textarea placeholder="Add a comment..."></textarea>
+                <button class="save-comment">Save</button>
+                <button class="cancel-comment">Cancel</button>
+            `;
+            
+            highlight.appendChild(commentBox);
+            
+            commentBox.querySelector('.save-comment').addEventListener('click', () => saveComment(highlight, commentBox));
+            commentBox.querySelector('.cancel-comment').addEventListener('click', () => cancelComment(highlight, commentBox));
+        }
+
+        function saveComment(highlight, commentBox) {
+            const comment = commentBox.querySelector('textarea').value;
+            if (comment) {
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'comment';
+                commentDiv.textContent = comment;
+                highlight.appendChild(commentDiv);
+                
+                // Save highlight and comment to localStorage
+                if (!highlights[currentPdf]) {
+                    highlights[currentPdf] = [];
+                }
+                highlights[currentPdf].push({
+                    left: highlight.style.left,
+                    top: highlight.style.top,
+                    width: highlight.style.width,
+                    height: highlight.style.height,
+                    comment: comment
+                });
+                localStorage.setItem(`highlights_${currentPdf}`, JSON.stringify(highlights[currentPdf]));
+            }
+            highlight.removeChild(commentBox);
+        }
+
+        function cancelComment(highlight, commentBox) {
+            highlight.parentNode.removeChild(highlight);
+        }
+
+        function loadHighlights() {
+            if (currentPdf) {
+                const savedHighlights = JSON.parse(localStorage.getItem(`highlights_${currentPdf}`)) || [];
+                savedHighlights.forEach(h => {
+                    const highlight = document.createElement('div');
+                    highlight.className = 'highlight';
+                    highlight.style.position = 'absolute';
+                    highlight.style.left = h.left;
+                    highlight.style.top = h.top;
+                    highlight.style.width = h.width;
+                    highlight.style.height = h.height;
+                    highlight.style.backgroundColor = 'yellow';
+                    highlight.style.opacity = '0.5';
+                    
+                    const commentDiv = document.createElement('div');
+                    commentDiv.className = 'comment';
+                    commentDiv.textContent = h.comment;
+                    highlight.appendChild(commentDiv);
+                    
+                    pdfContainer.appendChild(highlight);
+                });
+            }
+        }
+
+        pdfContainer.addEventListener('mouseup', addHighlight);
+
+        // Enable text selection
+        pdfContainer.addEventListener('mousedown', function(e) {
+            if (e.target.tagName === 'CANVAS') {
+                e.preventDefault();
+            }
+        });
+
+        // Update currentPage based on scroll position
+        pdfContainer.addEventListener('scroll', function() {
+            const pages = pdfContainer.getElementsByTagName('canvas');
+            for (let i = 0; i < pages.length; i++) {
+                const page = pages[i];
+                const rect = page.getBoundingClientRect();
+                if (rect.top >= 0 && rect.bottom <= window.innerHeight) {
+                    currentPage = parseInt(page.getAttribute('data-page-number'));
+                    break;
+                }
+            }
+        });
+        
+        // Event listener for PDF selection
+        document.querySelectorAll('.pdf-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const pdfUrl = this.getAttribute('href');
+                currentPdf = this.getAttribute('data-pdf-name');
+                loadAndRenderPDF(pdfUrl);
+
+                // Load saved notes for the selected PDF
+                const savedNotes = localStorage.getItem(`notes_${currentPdf}`);
+                document.getElementById('notes-area').value = savedNotes || '';
+            });
+        });
+    </script>
 
 
 
@@ -191,6 +350,7 @@
                 responseDiv.style.fontStyle = 'italic';
                 askedQuestions.appendChild(responseDiv);
             });
+            loadHighlights();
         }
     
         // Attach loadContentForPdf function to the PDF links

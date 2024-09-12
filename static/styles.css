@@ -245,22 +245,38 @@ iframe {
 }
 
 
-#pdf-container {
-    width: 800px;
-    height: 100vh;
+.pdf-viewer {
     overflow-y: auto;
-    position: relative;
+    height: 100vh;
 }
 
-/* #pdf-canvas {
-    width: 700px;
-    height: auto;
+#pdf-container canvas {
     display: block;
-    margin: 0 auto;
-} */
+    margin: 10px auto;
+}
 
-#pdf-viewer {
-    width: 700px;
-    height: 100vh;
-    border: none;
+.page-container {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.highlight {
+    position: absolute;
+    background-color: yellow;
+    opacity: 0.5;
+}
+.comment-box {
+    position: absolute;
+    background-color: white;
+    border: 1px solid black;
+    padding: 5px;
+    z-index: 1000;
+}
+.comment {
+    position: absolute;
+    background-color: white;
+    border: 1px solid black;
+    padding: 2px;
+    font-size: 12px;
+    z-index: 999;
 }
